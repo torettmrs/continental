@@ -1,18 +1,16 @@
-const CACHE = 'continental-v2';
+const CACHE = 'continental-v3';
+const BASE = '/continental/';
+const FILES = [
+  BASE + 'index.html',
+  BASE + 'manifest.json',
+  BASE + 'icon-32.png',
+  BASE + 'icon-180.png',
+  BASE + 'icon-192.png',
+  BASE + 'icon-512.png'
+];
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(cache => {
-      return cache.addAll([
-        './index.html',
-        './manifest.json',
-        './icon-192.png',
-        './icon-512.png',
-        './icon-180.png',
-        './icon-32.png'
-      ]);
-    })
-  );
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
   self.skipWaiting();
 });
 
@@ -34,7 +32,7 @@ self.addEventListener('fetch', e => {
         return fetch(e.request).then(response => {
           cache.put(e.request, response.clone());
           return response;
-        }).catch(() => cache.match('./index.html'));
+        }).catch(() => cache.match(BASE + 'index.html'));
       })
     )
   );
