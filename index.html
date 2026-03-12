@@ -519,3 +519,57 @@ checkSavedGame();
 </script>
 </body>
 </html>
+<style>
+/* MOBILE FIXES */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+.header {
+  padding: 1.2rem 1rem 0.5rem;
+  width: 100%;
+  overflow: hidden;
+}
+.header::before {
+  letter-spacing: 0.8rem !important;
+  font-size: 1rem !important;
+}
+.header h1 {
+  font-size: clamp(2rem, 10vw, 4rem) !important;
+  letter-spacing: 0.08em !important;
+  white-space: nowrap;
+}
+.container {
+  padding: 0 0.75rem 2rem;
+  width: 100%;
+}
+.card-panel {
+  padding: 1.5rem 1.2rem;
+  margin: 0;
+  border-radius: 10px;
+}
+.num-players-selector {
+  gap: 0.6rem;
+}
+.num-btn {
+  width: 48px;
+  height: 48px;
+  font-size: 1.3rem;
+}
+.score-input-row input {
+  width: 90px;
+}
+.action-buttons {
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.action-buttons .btn {
+  width: 100%;
+}
+.round-cards {
+  font-size: 2rem !important;
+}
+.divider {
+  max-width: 100%;
+}
+</style>
