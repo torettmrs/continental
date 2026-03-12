@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Continental</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@font-face { font-family: 'Playfair Display'; src: url('fonts/PlayfairDisplay-Regular.ttf'); font-weight: 400; }
+@font-face { font-family: 'Playfair Display'; src: url('fonts/PlayfairDisplay-Bold.ttf'); font-weight: 700; }
+@font-face { font-family: 'Playfair Display'; src: url('fonts/PlayfairDisplay-Black.ttf'); font-weight: 900; }
+@font-face { font-family: 'Crimson Pro'; src: url('fonts/CrimsonPro-Regular.ttf'); font-weight: 400; }
+@font-face { font-family: 'Crimson Pro'; src: url('fonts/CrimsonPro-Light.ttf'); font-weight: 300; }
+</style>
+<style>
+  :root {
+    --felt: #1a3a2a; --felt-light: #234d38; --felt-dark: #0f2218;
+    --gold: #c9a84c; --gold-light: #e8c97a; --gold-dark: #9a7a2e;
+    --cream: #f5ead8; --cream-dark: #e0d0b0;
+    --red: #8b1a1a; --red-light: #c0392b;
+    --text-dark: #1a1208; --card-bg: #fdfaf4;
+    --shadow: 0 8px 32px rgba(0,0,0,0.4); --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Crimson Pro', serif;
+    background-color: var(--felt-dark);
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(26,58,42,0.8) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(26,58,42,0.6) 0%, transparent 50%), repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.01) 10px, rgba(255,255,255,0.01) 11px);
+    min-height: 100vh; color: var(--cream); display: flex; flex-direction: column; align-items: center;
+  }
+  .header { text-align: center; padding: 2.5rem 1rem 1rem; }
+  .header::before { content: '♠ ♥ ♦ ♣'; display: block; font-size: 1.1rem; color: var(--gold); letter-spacing: 1.2rem; margin-bottom: 0.5rem; opacity: 0.7; }
+  .header h1 { font-family: 'Playfair Display', serif; font-size: 4rem; font-weight: 900; color: var(--gold); text-shadow: 0 0 40px rgba(201,168,76,0.4), 2px 2px 0 var(--gold-dark); letter-spacing: 0.15em; line-height: 1; }
+  .header p { font-style: italic; color: var(--cream-dark); font-size: 1.1rem; margin-top: 0.3rem; opacity: 0.8; }
+  .divider { width: 100%; max-width: 500px; height: 2px; background: linear-gradient(to right, transparent, var(--gold), transparent); margin: 1rem auto; opacity: 0.6; }
+  .container { width: 100%; max-width: 900px; padding: 0 1rem 3rem; }
+  .screen { display: none; } .screen.active { display: block; }
+  .card-panel { background: var(--card-bg); border-radius: 12px; padding: 2rem; box-shadow: var(--shadow), inset 0 0 0 1px rgba(201,168,76,0.3); color: var(--text-dark); position: relative; overflow: hidden; }
+  .card-panel::before { content: ''; position: absolute; inset: 6px; border: 1px solid rgba(201,168,76,0.2); border-radius: 8px; pointer-events: none; }
+  .panel-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; color: var(--red); text-align: center; margin-bottom: 1.5rem; }
+  .input-group { margin-bottom: 1.2rem; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #5a4020; margin-bottom: 0.4rem; }
+  input[type="text"], input[type="number"] { width: 100%; padding: 0.6rem 0.9rem; border: 2px solid #d4b896; border-radius: 6px; font-family: 'Crimson Pro', serif; font-size: 1.1rem; background: #fffdf8; color: var(--text-dark); transition: border-color 0.2s; outline: none; }
+  input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.15); }
+  .btn { display: inline-block; padding: 0.75rem 2rem; border: none; border-radius: 8px; font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.05em; }
+  .btn-primary { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: var(--text-dark); box-shadow: 0 4px 12px rgba(154,122,46,0.4); width: 100%; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(154,122,46,0.5); }
+  .btn-danger { background: linear-gradient(135deg, var(--red-light), var(--red)); color: white; box-shadow: 0 4px 12px rgba(139,26,26,0.4); }
+  .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(139,26,26,0.5); }
+  .btn-secondary { background: linear-gradient(135deg, #e8d9c0, #d4b896); color: var(--text-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .btn-secondary:hover { transform: translateY(-2px); }
+  .btn-sm { padding: 0.5rem 1.2rem; font-size: 0.95rem; }
+  #players-container .player-row { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.7rem; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .player-num { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.1rem; color: var(--gold-dark); width: 24px; flex-shrink: 0; text-align: right; }
+  .num-players-selector { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .num-btn { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #d4b896; background: #fffdf8; font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: #5a4020; cursor: pointer; transition: all 0.2s; }
+  .num-btn.selected { background: var(--gold); border-color: var(--gold-dark); color: var(--text-dark); box-shadow: 0 3px 10px rgba(154,122,46,0.4); }
+  .num-btn:hover:not(.selected) { border-color: var(--gold); background: #fff8e8; }
+  .round-info { background: linear-gradient(135deg, var(--felt), var(--felt-light)); border-radius: 10px; padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; border: 1px solid rgba(201,168,76,0.3); text-align: center; }
+  .round-number { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--gold); opacity: 0.8; }
+  .round-cards { font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 900; color: var(--gold); line-height: 1; margin: 0.2rem 0; }
+  .round-cards span { font-size: 1rem; font-weight: 400; font-family: 'Crimson Pro', serif; color: var(--cream-dark); }
+  .round-objective { font-size: 1.15rem; color: var(--cream); font-style: italic; }
+  .scores-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.95rem; }
+  .scores-table th { font-family: 'Playfair Display', serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #5a4020; padding: 0.5rem 0.5rem; border-bottom: 2px solid #d4b896; text-align: center; }
+  .scores-table th:first-child { text-align: left; }
+  .scores-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid #e8d9c0; text-align: center; }
+  .scores-table td:first-child { text-align: left; }
+  .scores-table tr:last-child td { border-bottom: none; }
+  .winner-cell { color: var(--red); font-weight: 700; }
+  .best-round { background: rgba(201,168,76,0.12); }
+  .editable-cell { cursor: pointer; }
+  .editable-cell:hover { background: rgba(201,168,76,0.08); }
+  .score-inputs { display: grid; gap: 0.8rem; }
+  .score-input-row { display: flex; align-items: center; gap: 1rem; }
+  .score-input-row .player-name-label { flex: 1; font-size: 1.1rem; font-weight: 600; color: var(--text-dark); }
+  .score-input-row input { width: 100px; text-align: center; font-size: 1.2rem; flex-shrink: 0; }
+  .action-buttons { display: flex; gap: 1rem; margin-top: 1.5rem; }
+  .action-buttons .btn { flex: 1; }
+  .ranking-list { list-style: none; padding: 0; }
+  .ranking-item { display: flex; align-items: center; padding: 1rem 1.2rem; margin-bottom: 0.8rem; border-radius: 10px; background: linear-gradient(135deg, #fffdf4, #f5ead8); border: 1px solid #d4b896; box-shadow: var(--shadow-sm); animation: slideIn 0.4s ease both; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+  .ranking-item.first { background: linear-gradient(135deg, #fff8e1, #fdeaa7); border-color: var(--gold); box-shadow: 0 4px 16px rgba(201,168,76,0.3); }
+  .rank-position { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 900; width: 40px; color: var(--gold-dark); flex-shrink: 0; }
+  .ranking-item.first .rank-position { color: var(--gold); font-size: 2.2rem; }
+  .rank-medal { font-size: 1.8rem; width: 40px; text-align: center; flex-shrink: 0; }
+  .rank-name { flex: 1; font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: var(--text-dark); padding: 0 0.5rem; }
+  .rank-score { font-size: 1.4rem; font-weight: 600; color: var(--red); }
+  .rank-score span { font-size: 0.8rem; color: #8a7060; font-weight: 400; }
+  .history-toggle { text-align: center; margin-bottom: 1rem; }
+  .btn-link { background: none; border: none; color: var(--gold-dark); font-family: 'Crimson Pro', serif; font-size: 0.95rem; font-style: italic; cursor: pointer; text-decoration: underline dotted; padding: 0; }
+  .history-table-wrap { overflow-x: auto; margin-bottom: 1rem; }
+  .chart-wrap { background: #fffdf8; border-radius: 10px; padding: 1rem; border: 1px solid #d4b896; margin-bottom: 1rem; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--card-bg); border-radius: 12px; padding: 2rem; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid rgba(201,168,76,0.4); animation: modalIn 0.25s ease; color: var(--text-dark); }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+  .modal h3 { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--red); margin-bottom: 0.8rem; text-align: center; }
+  .modal p { font-size: 1.05rem; color: #5a4020; text-align: center; margin-bottom: 1.5rem; line-height: 1.5; }
+  .modal-buttons { display: flex; gap: 0.8rem; }
+  .modal-buttons .btn { flex: 1; }
+  .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--felt); color: var(--cream); padding: 0.8rem 1.5rem; border-radius: 8px; font-size: 1rem; border: 1px solid var(--gold); box-shadow: var(--shadow); transition: transform 0.3s ease; z-index: 2000; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .saved-banner { background: linear-gradient(135deg, var(--felt), var(--felt-light)); border: 1px solid rgba(201,168,76,0.4); border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; justify-content: space-between; flex-wrap: wrap; }
+  .saved-banner p { color: var(--cream); font-size: 1rem; font-style: italic; }
+  .saved-banner .btn { width: auto; }
+  .hint { font-size: 0.8rem; color: #8a7060; font-style: italic; text-align: center; margin-bottom: 0.5rem; }
+  @media (max-width: 600px) {
+    .header h1 { font-size: 2.8rem; }
+    .card-panel { padding: 1.4rem; }
+    .action-buttons { flex-direction: column; }
+    .score-input-row input { width: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>CONTINENTAL</h1>
+  <p>El juego de cartas de toda la vida</p>
+</div>
+<div class="divider"></div>
+
+<div class="container">
+
+  <!-- PANTALLA 1: SETUP -->
+  <div id="screen-setup" class="screen active">
+    <div class="card-panel">
+      <div class="panel-title">Nueva Partida</div>
+      <div id="saved-banner" style="display:none;" class="saved-banner">
+        <p>🃏 Hay una partida guardada en curso</p>
+        <button class="btn btn-secondary btn-sm" onclick="loadSavedGame()">Continuar partida</button>
+      </div>
+      <div class="input-group">
+        <label>Número de jugadores</label>
+        <div class="num-players-selector">
+          <button class="num-btn" onclick="selectNumPlayers(2)">2</button>
+          <button class="num-btn" onclick="selectNumPlayers(3)">3</button>
+          <button class="num-btn" onclick="selectNumPlayers(4)">4</button>
+          <button class="num-btn" onclick="selectNumPlayers(5)">5</button>
+          <button class="num-btn" onclick="selectNumPlayers(6)">6</button>
+          <button class="num-btn" onclick="selectNumPlayers(7)">7</button>
+        </div>
+      </div>
+      <div id="players-container"></div>
+      <button class="btn btn-primary" onclick="startGame()" id="start-btn" style="display:none; margin-top:1rem;">♠ Comenzar Partida ♠</button>
+    </div>
+  </div>
+
+  <!-- PANTALLA 2: RONDA -->
+  <div id="screen-round" class="screen">
+    <div class="card-panel">
+      <div id="round-info-box" class="round-info"></div>
+      <div class="history-toggle">
+        <button class="btn-link" id="history-toggle-btn" onclick="toggleHistory()">Ver puntuaciones acumuladas ▾</button>
+      </div>
+      <div id="history-wrap" style="display:none;">
+        <div class="history-table-wrap">
+          <table class="scores-table" id="history-table"></table>
+        </div>
+        <p class="hint">★ mejor puntuación de la ronda &nbsp;|&nbsp; Toca una celda para editarla</p>
+        <div class="chart-wrap">
+          <canvas id="evolution-chart" height="160"></canvas>
+        </div>
+      </div>
+      <div class="divider" style="margin: 1rem auto;"></div>
+      <div class="panel-title" style="font-size:1.3rem; margin-bottom:1rem;">Puntos de esta ronda</div>
+      <div class="score-inputs" id="score-inputs"></div>
+      <div class="action-buttons">
+        <button class="btn btn-danger btn-sm" onclick="confirmGiveWinner()">🏆 Dar Ganador</button>
+        <button class="btn btn-primary" onclick="doNextRound()" id="next-round-btn">Siguiente Ronda →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 3: CLASIFICACIÓN FINAL -->
+  <div id="screen-final" class="screen">
+    <div class="card-panel">
+      <div class="panel-title">Clasificación Final</div>
+      <ul class="ranking-list" id="ranking-list"></ul>
+      <div class="divider" style="margin: 1.5rem auto;"></div>
+      <div class="history-toggle">
+        <button class="btn-link" onclick="toggleFinalHistory()">Ver historial completo ▾</button>
+      </div>
+      <div id="final-history-wrap" style="display:none;">
+        <div class="history-table-wrap">
+          <table class="scores-table" id="final-history-table"></table>
+        </div>
+        <div class="chart-wrap" style="margin-top:1rem;">
+          <canvas id="final-chart" height="200"></canvas>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="newGame()" style="margin-top:1.5rem;">♣ Nueva Partida ♣</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <p id="modal-body"></p>
+    <div class="modal-buttons">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="modal-confirm-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ROUNDS = [
+  { cards: 7,  objective: 'Dos tríos' },
+  { cards: 8,  objective: 'Trío y escalera' },
+  { cards: 9,  objective: 'Dos escaleras' },
+  { cards: 10, objective: 'Tres tríos' },
+  { cards: 11, objective: 'Dos tríos y una escalera' },
+  { cards: 12, objective: 'Trío y dos escaleras' },
+  { cards: 13, objective: 'Cuatro tríos' },
+  { cards: 14, objective: 'Tres tríos y una escalera' },
+  { cards: 15, objective: 'Dos tríos y dos escaleras' },
+];
+const COLORS = ['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400'];
+
+let numPlayers = 0, players = [], scores = [], currentRound = 0;
+let evoChart = null, finalChart = null;
+
+// ── GUARDADO ──────────────────────────────────────────────
+function saveGame() {
+  try { localStorage.setItem('continental_save', JSON.stringify({ players, scores, currentRound, numPlayers })); } catch(e){}
+}
+function clearSave() { try { localStorage.removeItem('continental_save'); } catch(e){} }
+function checkSavedGame() {
+  try { if (localStorage.getItem('continental_save')) document.getElementById('saved-banner').style.display = 'flex'; } catch(e){}
+}
+function loadSavedGame() {
+  try {
+    const s = JSON.parse(localStorage.getItem('continental_save'));
+    players = s.players; scores = s.scores; currentRound = s.currentRound; numPlayers = s.numPlayers;
+    showRound(); showToast('Partida cargada ✓');
+  } catch(e){ showToast('Error al cargar la partida'); }
+}
+
+// ── SETUP ─────────────────────────────────────────────────
+function selectNumPlayers(n) {
+  numPlayers = n;
+  document.querySelectorAll('.num-btn').forEach((b,i) => b.classList.toggle('selected', i === n-2));
+  const c = document.getElementById('players-container');
+  c.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `<span class="player-num">${i+1}.</span><input type="text" id="player-${i}" placeholder="Jugador ${i+1}" />`;
+    c.appendChild(row);
+  }
+  document.getElementById('start-btn').style.display = 'block';
+  setTimeout(() => document.getElementById('player-0').focus(), 50);
+}
+
+function startGame() {
+  players = Array.from({length: numPlayers}, (_,i) => document.getElementById(`player-${i}`).value.trim() || `Jugador ${i+1}`);
+  scores = players.map(() => []);
+  currentRound = 0;
+  clearSave();
+  showRound();
+}
+
+// ── RONDA ─────────────────────────────────────────────────
+function showRound() {
+  showScreen('screen-round');
+  const r = ROUNDS[currentRound];
+  const discount = (currentRound + 1) * 10;
+  document.getElementById('round-info-box').innerHTML = `
+    <div class="round-number">Ronda ${currentRound+1} de ${ROUNDS.length}</div>
+    <div class="round-cards">${r.cards} <span>cartas</span></div>
+    <div class="round-objective">${r.objective}</div>
+    <div style="margin-top:0.6rem; font-size:0.9rem; color:var(--gold-light); opacity:0.85;">El ganador de esta ronda descuenta <strong style="color:var(--gold-light);">−${discount} puntos</strong></div>`;
+  document.getElementById('next-round-btn').textContent = currentRound === ROUNDS.length-1 ? '🏆 Finalizar Partida' : 'Siguiente Ronda →';
+  renderScoreInputs();
+  document.getElementById('history-wrap').style.display = 'none';
+  document.getElementById('history-toggle-btn').textContent = 'Ver puntuaciones acumuladas ▾';
+  saveGame();
+}
+
+function renderScoreInputs() {
+  const c = document.getElementById('score-inputs');
+  c.innerHTML = players.map((name,i) => `
+    <div class="score-input-row">
+      <span class="player-name-label">${name}</span>
+      <input type="number" id="si-${i}" min="0" placeholder="0" />
+    </div>`).join('');
+  document.getElementById('si-0').focus();
+}
+
+function getInputScores() {
+  return players.map((_,i) => { const v = parseInt(document.getElementById(`si-${i}`).value); return isNaN(v) ? 0 : v; });
+}
+
+function doNextRound() {
+  const s = getInputScores();
+  s.forEach((v,i) => scores[i].push(v));
+  saveGame();
+  if (currentRound === ROUNDS.length-1) { clearSave(); showFinal(); }
+  else { currentRound++; showRound(); playChime(); }
+}
+
+function confirmGiveWinner() {
+  showModal('¿Terminar la partida?', 'Se registrarán los puntos actuales y se mostrará la clasificación final.', 'Sí, terminar', () => {
+    const s = getInputScores();
+    s.forEach((v,i) => scores[i].push(v));
+    clearSave(); showFinal();
+  });
+}
+
+// ── TOTALES ───────────────────────────────────────────────
+function getTotals() { return players.map((_,i) => scores[i].reduce((a,b) => a+b, 0)); }
+function getCumulatives() {
+  return players.map((_,i) => { let acc=0; return scores[i].map(s => { acc+=s; return acc; }); });
+}
+
+// ── HISTORIAL CON EDICIÓN ─────────────────────────────────
+function renderHistoryTable() {
+  const table = document.getElementById('history-table');
+  const rounds = scores[0]?.length ?? 0;
+  if (rounds === 0) { table.innerHTML = '<tr><td colspan="20" style="text-align:center;color:#8a7060;font-style:italic;padding:1rem;">Aún no hay rondas jugadas</td></tr>'; return; }
+  const totals = getTotals();
+  const bestPer = Array.from({length: rounds}, (_,r) => Math.min(...players.map((_,i) => scores[i][r])));
+
+  let h = '<thead><tr><th>Jugador</th>';
+  for (let r=0; r<rounds; r++) h += `<th>R${r+1}</th>`;
+  h += '<th>Total</th></tr></thead><tbody>';
+
+  players.forEach((name,i) => {
+    h += `<tr><td><strong>${name}</strong></td>`;
+    for (let r=0; r<rounds; r++) {
+      const best = scores[i][r] === bestPer[r];
+      h += `<td class="editable-cell${best?' best-round winner-cell':''}" onclick="startEdit(this,${i},${r})">${scores[i][r]}${best?' ★':''}</td>`;
+    }
+    const win = totals[i] === Math.min(...totals);
+    h += `<td class="${win?'winner-cell':''}"><strong>${totals[i]}</strong></td></tr>`;
+  });
+  h += '</tbody>';
+  table.innerHTML = h;
+  buildChart('evolution-chart', false);
+}
+
+function startEdit(td, pi, ri) {
+  if (td.querySelector('input')) return;
+  const val = scores[pi][ri];
+  td.innerHTML = `<input type="number" value="${val}" min="0" style="width:60px;text-align:center;padding:0.15rem 0.2rem;" onblur="finishEdit(this,${pi},${ri})" onkeydown="if(event.key==='Enter')this.blur()" />`;
+  td.querySelector('input').focus();
+  td.querySelector('input').select();
+}
+
+function finishEdit(inp, pi, ri) {
+  const v = parseInt(inp.value); scores[pi][ri] = isNaN(v) ? 0 : v;
+  saveGame(); renderHistoryTable(); showToast('Puntuación actualizada ✓');
+}
+
+// ── GRÁFICA ───────────────────────────────────────────────
+function buildChart(canvasId, isFinal) {
+  const rounds = scores[0]?.length ?? 0;
+  if (rounds === 0) return;
+  const cum = getCumulatives();
+  const labels = Array.from({length: rounds}, (_,i) => `R${i+1}`);
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  if (canvasId === 'evolution-chart' && evoChart) { evoChart.destroy(); evoChart = null; }
+  if (canvasId === 'final-chart' && finalChart) { finalChart.destroy(); finalChart = null; }
+
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: players.map((name,i) => ({
+        label: name, data: cum[i],
+        borderColor: COLORS[i%COLORS.length],
+        backgroundColor: COLORS[i%COLORS.length]+'22',
+        tension: 0.3, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Crimson Pro', size: 13 }, color: '#3a2010' } },
+        title: { display: true, text: isFinal ? 'Evolución completa de la partida' : 'Evolución de puntos acumulados', color: '#5a4020', font: { family: 'Playfair Display', size: 14, weight: 'bold' } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} pts` } }
+      },
+      scales: {
+        y: { ticks: { color: '#5a4020', font: { family: 'Crimson Pro' } }, grid: { color: 'rgba(90,64,32,0.1)' } },
+        x: { ticks: { color: '#5a4020', font: { family: 'Crimson Pro' } }, grid: { color: 'rgba(90,64,32,0.1)' } }
+      }
+    }
+  });
+  if (canvasId === 'evolution-chart') evoChart = chart;
+  else finalChart = chart;
+}
+
+// ── FINAL ─────────────────────────────────────────────────
+function showFinal() {
+  showScreen('screen-final');
+  const totals = getTotals();
+  const sorted = players.map((name,i) => ({name, total: totals[i]})).sort((a,b) => a.total-b.total);
+  const medals = ['🥇','🥈','🥉'];
+  const list = document.getElementById('ranking-list');
+  list.innerHTML = sorted.map((p,rank) => `
+    <li class="ranking-item${rank===0?' first':''}" style="animation-delay:${rank*0.1+0.05}s">
+      <span class="rank-position">${rank+1}</span>
+      <span class="rank-medal">${medals[rank]||'🃏'}</span>
+      <span class="rank-name">${p.name}</span>
+      <span class="rank-score">${p.total} <span>pts</span></span>
+    </li>`).join('');
+
+  const rounds = scores[0]?.length ?? 0;
+  const bestPer = Array.from({length: rounds}, (_,r) => Math.min(...players.map((_,i) => scores[i][r])));
+  const ttotals = getTotals();
+  let h = '<thead><tr><th>Jugador</th>';
+  for (let r=0; r<rounds; r++) h += `<th>R${r+1}</th>`;
+  h += '<th>Total</th></tr></thead><tbody>';
+  players.forEach((name,i) => {
+    h += `<tr><td><strong>${name}</strong></td>`;
+    for (let r=0; r<rounds; r++) {
+      const best = scores[i][r] === bestPer[r];
+      h += `<td class="${best?'best-round winner-cell':''}">${scores[i][r]}${best?' ★':''}</td>`;
+    }
+    const win = ttotals[i] === Math.min(...ttotals);
+    h += `<td class="${win?'winner-cell':''}"><strong>${ttotals[i]}</strong></td></tr>`;
+  });
+  document.getElementById('final-history-table').innerHTML = h + '</tbody>';
+  document.getElementById('final-history-wrap').style.display = 'none';
+  setTimeout(() => buildChart('final-chart', true), 200);
+}
+
+// ── TOGGLES ───────────────────────────────────────────────
+function toggleHistory() {
+  const wrap = document.getElementById('history-wrap');
+  const btn = document.getElementById('history-toggle-btn');
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? 'Ocultar puntuaciones ▴' : 'Ver puntuaciones acumuladas ▾';
+  if (open) renderHistoryTable();
+}
+function toggleFinalHistory() {
+  const wrap = document.getElementById('final-history-wrap');
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+}
+
+// ── MODAL ─────────────────────────────────────────────────
+function showModal(title, body, confirmText, onConfirm) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent = body;
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.textContent = confirmText;
+  btn.onclick = () => { closeModal(); onConfirm(); };
+  document.getElementById('modal-overlay').classList.add('active');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
+document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+// ── TOAST ─────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── SONIDO ────────────────────────────────────────────────
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523, 659, 784].forEach((freq,i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = 'sine';
+      const t = ctx.currentTime + i * 0.13;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.12, t+0.05);
+      gain.gain.linearRampToValueAtTime(0, t+0.35);
+      osc.start(t); osc.stop(t+0.35);
+    });
+  } catch(e){}
+}
+
+// ── NAVEGACIÓN ────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function newGame() {
+  showModal('¿Nueva partida?', 'Se perderá el progreso actual y la partida guardada.', 'Sí, nueva partida', () => {
+    clearSave();
+    numPlayers=0; players=[]; scores=[]; currentRound=0;
+    if (evoChart) { evoChart.destroy(); evoChart=null; }
+    if (finalChart) { finalChart.destroy(); finalChart=null; }
+    document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('players-container').innerHTML = '';
+    document.getElementById('start-btn').style.display = 'none';
+    document.getElementById('saved-banner').style.display = 'none';
+    showScreen('screen-setup');
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────
+checkSavedGame();
+</script>
+</body>
+</html>
