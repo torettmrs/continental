@@ -23,15 +23,16 @@
     --shadow: 0 8px 32px rgba(0,0,0,0.4); --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; width: 100%; }
   body {
     font-family: 'Crimson Pro', serif;
     background-color: var(--felt-dark);
     background-image: radial-gradient(ellipse at 20% 50%, rgba(26,58,42,0.8) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(26,58,42,0.6) 0%, transparent 50%), repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.01) 10px, rgba(255,255,255,0.01) 11px);
     min-height: 100vh; color: var(--cream); display: flex; flex-direction: column; align-items: center;
   }
-  .header { text-align: center; padding: 2.5rem 1rem 1rem; }
+  .header { text-align: center; padding: 2.5rem 1rem 1rem; width: 100%; }
   .header::before { content: '♠ ♥ ♦ ♣'; display: block; font-size: 1.1rem; color: var(--gold); letter-spacing: 1.2rem; margin-bottom: 0.5rem; opacity: 0.7; }
-  .header h1 { font-family: 'Playfair Display', serif; font-size: 4rem; font-weight: 900; color: var(--gold); text-shadow: 0 0 40px rgba(201,168,76,0.4), 2px 2px 0 var(--gold-dark); letter-spacing: 0.15em; line-height: 1; }
+  .header h1 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 10vw, 4rem); font-weight: 900; color: var(--gold); text-shadow: 0 0 40px rgba(201,168,76,0.4), 2px 2px 0 var(--gold-dark); letter-spacing: 0.1em; line-height: 1; }
   .header p { font-style: italic; color: var(--cream-dark); font-size: 1.1rem; margin-top: 0.3rem; opacity: 0.8; }
   .divider { width: 100%; max-width: 500px; height: 2px; background: linear-gradient(to right, transparent, var(--gold), transparent); margin: 1rem auto; opacity: 0.6; }
   .container { width: 100%; max-width: 900px; padding: 0 1rem 3rem; }
@@ -107,11 +108,16 @@
   .saved-banner p { color: var(--cream); font-size: 1rem; font-style: italic; }
   .saved-banner .btn { width: auto; }
   .hint { font-size: 0.8rem; color: #8a7060; font-style: italic; text-align: center; margin-bottom: 0.5rem; }
-  @media (max-width: 600px) {
-    .header h1 { font-size: 2.8rem; }
-    .card-panel { padding: 1.4rem; }
-    .action-buttons { flex-direction: column; }
+  @media (max-width: 768px) {
+    .header { padding: 1.2rem 0.75rem 0.5rem; }
+    .header::before { letter-spacing: 0.7rem; font-size: 0.9rem; }
+    .card-panel { padding: 1.2rem 1rem; }
+    .panel-title { font-size: 1.4rem; }
     .score-input-row input { width: 80px; }
+    .action-buttons { flex-direction: column; gap: 0.7rem; }
+    .action-buttons .btn { width: 100%; }
+    .rank-name { font-size: 1.1rem; }
+    .round-cards { font-size: 2rem; }
   }
 </style>
 </head>
@@ -125,7 +131,6 @@
 
 <div class="container">
 
-  <!-- PANTALLA 1: SETUP -->
   <div id="screen-setup" class="screen active">
     <div class="card-panel">
       <div class="panel-title">Nueva Partida</div>
@@ -149,7 +154,6 @@
     </div>
   </div>
 
-  <!-- PANTALLA 2: RONDA -->
   <div id="screen-round" class="screen">
     <div class="card-panel">
       <div id="round-info-box" class="round-info"></div>
@@ -175,7 +179,6 @@
     </div>
   </div>
 
-  <!-- PANTALLA 3: CLASIFICACIÓN FINAL -->
   <div id="screen-final" class="screen">
     <div class="card-panel">
       <div class="panel-title">Clasificación Final</div>
@@ -198,7 +201,6 @@
 
 </div>
 
-<!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <h3 id="modal-title"></h3>
@@ -229,7 +231,6 @@ const COLORS = ['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d3
 let numPlayers = 0, players = [], scores = [], currentRound = 0;
 let evoChart = null, finalChart = null;
 
-// ── GUARDADO ──────────────────────────────────────────────
 function saveGame() {
   try { localStorage.setItem('continental_save', JSON.stringify({ players, scores, currentRound, numPlayers })); } catch(e){}
 }
@@ -245,7 +246,6 @@ function loadSavedGame() {
   } catch(e){ showToast('Error al cargar la partida'); }
 }
 
-// ── SETUP ─────────────────────────────────────────────────
 function selectNumPlayers(n) {
   numPlayers = n;
   document.querySelectorAll('.num-btn').forEach((b,i) => b.classList.toggle('selected', i === n-2));
@@ -254,7 +254,7 @@ function selectNumPlayers(n) {
   for (let i = 0; i < n; i++) {
     const row = document.createElement('div');
     row.className = 'player-row';
-    row.innerHTML = `<span class="player-num">${i+1}.</span><input type="text" id="player-${i}" placeholder="Jugador ${i+1}" />`;
+    row.innerHTML = '<span class="player-num">' + (i+1) + '.</span><input type="text" id="player-' + i + '" placeholder="Jugador ' + (i+1) + '" />';
     c.appendChild(row);
   }
   document.getElementById('start-btn').style.display = 'block';
@@ -262,23 +262,22 @@ function selectNumPlayers(n) {
 }
 
 function startGame() {
-  players = Array.from({length: numPlayers}, (_,i) => document.getElementById(`player-${i}`).value.trim() || `Jugador ${i+1}`);
+  players = Array.from({length: numPlayers}, (_,i) => document.getElementById('player-' + i).value.trim() || 'Jugador ' + (i+1));
   scores = players.map(() => []);
   currentRound = 0;
   clearSave();
   showRound();
 }
 
-// ── RONDA ─────────────────────────────────────────────────
 function showRound() {
   showScreen('screen-round');
   const r = ROUNDS[currentRound];
   const discount = (currentRound + 1) * 10;
-  document.getElementById('round-info-box').innerHTML = `
-    <div class="round-number">Ronda ${currentRound+1} de ${ROUNDS.length}</div>
-    <div class="round-cards">${r.cards} <span>cartas</span></div>
-    <div class="round-objective">${r.objective}</div>
-    <div style="margin-top:0.6rem; font-size:0.9rem; color:var(--gold-light); opacity:0.85;">El ganador de esta ronda descuenta <strong style="color:var(--gold-light);">−${discount} puntos</strong></div>`;
+  document.getElementById('round-info-box').innerHTML =
+    '<div class="round-number">Ronda ' + (currentRound+1) + ' de ' + ROUNDS.length + '</div>' +
+    '<div class="round-cards">' + r.cards + ' <span>cartas</span></div>' +
+    '<div class="round-objective">' + r.objective + '</div>' +
+    '<div style="margin-top:0.6rem; font-size:0.9rem; color:var(--gold-light); opacity:0.85;">El ganador de esta ronda descuenta <strong style="color:var(--gold-light);">-' + discount + ' puntos</strong></div>';
   document.getElementById('next-round-btn').textContent = currentRound === ROUNDS.length-1 ? '🏆 Finalizar Partida' : 'Siguiente Ronda →';
   renderScoreInputs();
   document.getElementById('history-wrap').style.display = 'none';
@@ -288,16 +287,17 @@ function showRound() {
 
 function renderScoreInputs() {
   const c = document.getElementById('score-inputs');
-  c.innerHTML = players.map((name,i) => `
-    <div class="score-input-row">
-      <span class="player-name-label">${name}</span>
-      <input type="number" id="si-${i}" min="0" placeholder="0" />
-    </div>`).join('');
+  c.innerHTML = players.map((name,i) =>
+    '<div class="score-input-row">' +
+    '<span class="player-name-label">' + name + '</span>' +
+    '<input type="number" id="si-' + i + '" min="0" placeholder="0" />' +
+    '</div>'
+  ).join('');
   document.getElementById('si-0').focus();
 }
 
 function getInputScores() {
-  return players.map((_,i) => { const v = parseInt(document.getElementById(`si-${i}`).value); return isNaN(v) ? 0 : v; });
+  return players.map((_,i) => { const v = parseInt(document.getElementById('si-' + i).value); return isNaN(v) ? 0 : v; });
 }
 
 function doNextRound() {
@@ -309,39 +309,35 @@ function doNextRound() {
 }
 
 function confirmGiveWinner() {
-  showModal('¿Terminar la partida?', 'Se registrarán los puntos actuales y se mostrará la clasificación final.', 'Sí, terminar', () => {
+  showModal('¿Terminar la partida?', 'Se registrarán los puntos actuales y se mostrará la clasificación final.', 'Sí, terminar', function() {
     const s = getInputScores();
     s.forEach((v,i) => scores[i].push(v));
     clearSave(); showFinal();
   });
 }
 
-// ── TOTALES ───────────────────────────────────────────────
 function getTotals() { return players.map((_,i) => scores[i].reduce((a,b) => a+b, 0)); }
 function getCumulatives() {
   return players.map((_,i) => { let acc=0; return scores[i].map(s => { acc+=s; return acc; }); });
 }
 
-// ── HISTORIAL CON EDICIÓN ─────────────────────────────────
 function renderHistoryTable() {
   const table = document.getElementById('history-table');
-  const rounds = scores[0]?.length ?? 0;
+  const rounds = scores[0] ? scores[0].length : 0;
   if (rounds === 0) { table.innerHTML = '<tr><td colspan="20" style="text-align:center;color:#8a7060;font-style:italic;padding:1rem;">Aún no hay rondas jugadas</td></tr>'; return; }
   const totals = getTotals();
   const bestPer = Array.from({length: rounds}, (_,r) => Math.min(...players.map((_,i) => scores[i][r])));
-
   let h = '<thead><tr><th>Jugador</th>';
-  for (let r=0; r<rounds; r++) h += `<th>R${r+1}</th>`;
+  for (let r=0; r<rounds; r++) h += '<th>R' + (r+1) + '</th>';
   h += '<th>Total</th></tr></thead><tbody>';
-
   players.forEach((name,i) => {
-    h += `<tr><td><strong>${name}</strong></td>`;
+    h += '<tr><td><strong>' + name + '</strong></td>';
     for (let r=0; r<rounds; r++) {
       const best = scores[i][r] === bestPer[r];
-      h += `<td class="editable-cell${best?' best-round winner-cell':''}" onclick="startEdit(this,${i},${r})">${scores[i][r]}${best?' ★':''}</td>`;
+      h += '<td class="editable-cell' + (best?' best-round winner-cell':'') + '" onclick="startEdit(this,' + i + ',' + r + ')">' + scores[i][r] + (best?' ★':'') + '</td>';
     }
     const win = totals[i] === Math.min(...totals);
-    h += `<td class="${win?'winner-cell':''}"><strong>${totals[i]}</strong></td></tr>`;
+    h += '<td class="' + (win?'winner-cell':'') + '"><strong>' + totals[i] + '</strong></td></tr>';
   });
   h += '</tbody>';
   table.innerHTML = h;
@@ -351,7 +347,7 @@ function renderHistoryTable() {
 function startEdit(td, pi, ri) {
   if (td.querySelector('input')) return;
   const val = scores[pi][ri];
-  td.innerHTML = `<input type="number" value="${val}" min="0" style="width:60px;text-align:center;padding:0.15rem 0.2rem;" onblur="finishEdit(this,${pi},${ri})" onkeydown="if(event.key==='Enter')this.blur()" />`;
+  td.innerHTML = '<input type="number" value="' + val + '" min="0" style="width:60px;text-align:center;padding:0.15rem 0.2rem;" onblur="finishEdit(this,' + pi + ',' + ri + ')" onkeydown="if(event.key===\'Enter\')this.blur()" />';
   td.querySelector('input').focus();
   td.querySelector('input').select();
 }
@@ -361,18 +357,15 @@ function finishEdit(inp, pi, ri) {
   saveGame(); renderHistoryTable(); showToast('Puntuación actualizada ✓');
 }
 
-// ── GRÁFICA ───────────────────────────────────────────────
 function buildChart(canvasId, isFinal) {
-  const rounds = scores[0]?.length ?? 0;
+  const rounds = scores[0] ? scores[0].length : 0;
   if (rounds === 0) return;
   const cum = getCumulatives();
-  const labels = Array.from({length: rounds}, (_,i) => `R${i+1}`);
+  const labels = Array.from({length: rounds}, (_,i) => 'R' + (i+1));
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
-
   if (canvasId === 'evolution-chart' && evoChart) { evoChart.destroy(); evoChart = null; }
   if (canvasId === 'final-chart' && finalChart) { finalChart.destroy(); finalChart = null; }
-
   const chart = new Chart(canvas, {
     type: 'line',
     data: {
@@ -380,7 +373,7 @@ function buildChart(canvasId, isFinal) {
       datasets: players.map((name,i) => ({
         label: name, data: cum[i],
         borderColor: COLORS[i%COLORS.length],
-        backgroundColor: COLORS[i%COLORS.length]+'22',
+        backgroundColor: COLORS[i%COLORS.length] + '22',
         tension: 0.3, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: false
       }))
     },
@@ -389,7 +382,7 @@ function buildChart(canvasId, isFinal) {
       plugins: {
         legend: { position: 'bottom', labels: { font: { family: 'Crimson Pro', size: 13 }, color: '#3a2010' } },
         title: { display: true, text: isFinal ? 'Evolución completa de la partida' : 'Evolución de puntos acumulados', color: '#5a4020', font: { family: 'Playfair Display', size: 14, weight: 'bold' } },
-        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} pts` } }
+        tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + ' pts'; } } }
       },
       scales: {
         y: { ticks: { color: '#5a4020', font: { family: 'Crimson Pro' } }, grid: { color: 'rgba(90,64,32,0.1)' } },
@@ -401,42 +394,40 @@ function buildChart(canvasId, isFinal) {
   else finalChart = chart;
 }
 
-// ── FINAL ─────────────────────────────────────────────────
 function showFinal() {
   showScreen('screen-final');
   const totals = getTotals();
   const sorted = players.map((name,i) => ({name, total: totals[i]})).sort((a,b) => a.total-b.total);
   const medals = ['🥇','🥈','🥉'];
   const list = document.getElementById('ranking-list');
-  list.innerHTML = sorted.map((p,rank) => `
-    <li class="ranking-item${rank===0?' first':''}" style="animation-delay:${rank*0.1+0.05}s">
-      <span class="rank-position">${rank+1}</span>
-      <span class="rank-medal">${medals[rank]||'🃏'}</span>
-      <span class="rank-name">${p.name}</span>
-      <span class="rank-score">${p.total} <span>pts</span></span>
-    </li>`).join('');
-
-  const rounds = scores[0]?.length ?? 0;
+  list.innerHTML = sorted.map((p,rank) =>
+    '<li class="ranking-item' + (rank===0?' first':'') + '" style="animation-delay:' + (rank*0.1+0.05) + 's">' +
+    '<span class="rank-position">' + (rank+1) + '</span>' +
+    '<span class="rank-medal">' + (medals[rank]||'🃏') + '</span>' +
+    '<span class="rank-name">' + p.name + '</span>' +
+    '<span class="rank-score">' + p.total + ' <span>pts</span></span>' +
+    '</li>'
+  ).join('');
+  const rounds = scores[0] ? scores[0].length : 0;
   const bestPer = Array.from({length: rounds}, (_,r) => Math.min(...players.map((_,i) => scores[i][r])));
   const ttotals = getTotals();
   let h = '<thead><tr><th>Jugador</th>';
-  for (let r=0; r<rounds; r++) h += `<th>R${r+1}</th>`;
+  for (let r=0; r<rounds; r++) h += '<th>R' + (r+1) + '</th>';
   h += '<th>Total</th></tr></thead><tbody>';
   players.forEach((name,i) => {
-    h += `<tr><td><strong>${name}</strong></td>`;
+    h += '<tr><td><strong>' + name + '</strong></td>';
     for (let r=0; r<rounds; r++) {
       const best = scores[i][r] === bestPer[r];
-      h += `<td class="${best?'best-round winner-cell':''}">${scores[i][r]}${best?' ★':''}</td>`;
+      h += '<td class="' + (best?'best-round winner-cell':'') + '">' + scores[i][r] + (best?' ★':'') + '</td>';
     }
     const win = ttotals[i] === Math.min(...ttotals);
-    h += `<td class="${win?'winner-cell':''}"><strong>${ttotals[i]}</strong></td></tr>`;
+    h += '<td class="' + (win?'winner-cell':'') + '"><strong>' + ttotals[i] + '</strong></td></tr>';
   });
   document.getElementById('final-history-table').innerHTML = h + '</tbody>';
   document.getElementById('final-history-wrap').style.display = 'none';
-  setTimeout(() => buildChart('final-chart', true), 200);
+  setTimeout(function() { buildChart('final-chart', true); }, 200);
 }
 
-// ── TOGGLES ───────────────────────────────────────────────
 function toggleHistory() {
   const wrap = document.getElementById('history-wrap');
   const btn = document.getElementById('history-toggle-btn');
@@ -450,30 +441,27 @@ function toggleFinalHistory() {
   wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
 }
 
-// ── MODAL ─────────────────────────────────────────────────
 function showModal(title, body, confirmText, onConfirm) {
   document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-body').textContent = body;
   const btn = document.getElementById('modal-confirm-btn');
   btn.textContent = confirmText;
-  btn.onclick = () => { closeModal(); onConfirm(); };
+  btn.onclick = function() { closeModal(); onConfirm(); };
   document.getElementById('modal-overlay').classList.add('active');
 }
 function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
-document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+document.getElementById('modal-overlay').addEventListener('click', function(e) { if (e.target === e.currentTarget) closeModal(); });
 
-// ── TOAST ─────────────────────────────────────────────────
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
 }
 
-// ── SONIDO ────────────────────────────────────────────────
 function playChime() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [523, 659, 784].forEach((freq,i) => {
+    [523, 659, 784].forEach(function(freq, i) {
       const osc = ctx.createOscillator(), gain = ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
       osc.frequency.value = freq; osc.type = 'sine';
@@ -486,20 +474,19 @@ function playChime() {
   } catch(e){}
 }
 
-// ── NAVEGACIÓN ────────────────────────────────────────────
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
 }
 
 function newGame() {
-  showModal('¿Nueva partida?', 'Se perderá el progreso actual y la partida guardada.', 'Sí, nueva partida', () => {
+  showModal('¿Nueva partida?', 'Se perderá el progreso actual y la partida guardada.', 'Sí, nueva partida', function() {
     clearSave();
     numPlayers=0; players=[]; scores=[]; currentRound=0;
     if (evoChart) { evoChart.destroy(); evoChart=null; }
     if (finalChart) { finalChart.destroy(); finalChart=null; }
-    document.querySelectorAll('.num-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.num-btn').forEach(function(b) { b.classList.remove('selected'); });
     document.getElementById('players-container').innerHTML = '';
     document.getElementById('start-btn').style.display = 'none';
     document.getElementById('saved-banner').style.display = 'none';
@@ -507,69 +494,13 @@ function newGame() {
   });
 }
 
-// ── INIT ──────────────────────────────────────────────
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/continental/service-worker.js", { scope: "/continental/" })
-        .then(reg => console.log("SW OK:", reg.scope))
-        .catch(err => console.log("SW error:", err));
-    });
-  }────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/continental/service-worker.js', { scope: '/continental/' });
+  });
+}
+
 checkSavedGame();
 </script>
 </body>
 </html>
-<style>
-/* MOBILE FIXES */
-html, body {
-  overflow-x: hidden;
-  width: 100%;
-}
-.header {
-  padding: 1.2rem 1rem 0.5rem;
-  width: 100%;
-  overflow: hidden;
-}
-.header::before {
-  letter-spacing: 0.8rem !important;
-  font-size: 1rem !important;
-}
-.header h1 {
-  font-size: clamp(2rem, 10vw, 4rem) !important;
-  letter-spacing: 0.08em !important;
-  white-space: nowrap;
-}
-.container {
-  padding: 0 0.75rem 2rem;
-  width: 100%;
-}
-.card-panel {
-  padding: 1.5rem 1.2rem;
-  margin: 0;
-  border-radius: 10px;
-}
-.num-players-selector {
-  gap: 0.6rem;
-}
-.num-btn {
-  width: 48px;
-  height: 48px;
-  font-size: 1.3rem;
-}
-.score-input-row input {
-  width: 90px;
-}
-.action-buttons {
-  flex-direction: column;
-  gap: 0.7rem;
-}
-.action-buttons .btn {
-  width: 100%;
-}
-.round-cards {
-  font-size: 2rem !important;
-}
-.divider {
-  max-width: 100%;
-}
-</style>
