@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Generador de iconos - Continental</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 2rem; background: #f0f0f0; }
+  h2 { margin-bottom: 1rem; }
+  .instructions { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; line-height: 1.8; }
+  .icons { display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1.5rem; }
+  .icon-box { text-align: center; }
+  .icon-box p { font-size: 0.85rem; color: #555; margin-top: 0.5rem; }
+  canvas { display: block; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  .btn { display: inline-block; padding: 0.6rem 1.4rem; background: #1a3a2a; color: #c9a84c; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; margin: 0.3rem; font-weight: bold; }
+  .btn:hover { background: #234d38; }
+  .download-all { margin-top: 1rem; }
+</style>
+</head>
+<body>
+<h2>Generador de iconos — Continental PWA</h2>
+<div class="instructions">
+  <strong>Instrucciones:</strong><br>
+  1. Haz clic en <strong>"Descargar todos los iconos"</strong><br>
+  2. Se descargarán 4 archivos PNG: icon-192.png, icon-512.png, icon-180.png e icon-32.png<br>
+  3. Mueve todos esos archivos a la carpeta de tu proyecto de GitHub (donde está el index.html)<br>
+  4. Continúa con los demás pasos de la PWA
+</div>
+
+<div class="icons">
+  <div class="icon-box"><canvas id="c512" width="512" height="512"></canvas><p>512×512</p></div>
+  <div class="icon-box"><canvas id="c192" width="192" height="192"></canvas><p>192×192</p></div>
+  <div class="icon-box"><canvas id="c180" width="180" height="180"></canvas><p>180×180 (iOS)</p></div>
+  <div class="icon-box"><canvas id="c32" width="32" height="32"></canvas><p>32×32 (favicon)</p></div>
+</div>
+
+<div class="download-all">
+  <button class="btn" onclick="downloadAll()">⬇ Descargar todos los iconos</button>
+</div>
+
+<script>
+function drawIcon(canvas) {
+  const s = canvas.width;
+  const ctx = canvas.getContext('2d');
+  const r = s * 0.18;
+
+  // Fondo verde tapete
+  ctx.fillStyle = '#1a3a2a';
+  roundRect(ctx, 0, 0, s, s, r);
+  ctx.fill();
+
+  // Borde dorado exterior
+  ctx.strokeStyle = 'rgba(201,168,76,0.5)';
+  ctx.lineWidth = s * 0.006;
+  roundRect(ctx, s*0.06, s*0.06, s*0.88, s*0.88, r*0.85);
+  ctx.stroke();
+
+  // Carta izquierda de fondo
+  drawCard(ctx, s*0.12, s*0.22, s*0.32, s*0.44, s, -12, '#8b1a1a', '♠');
+
+  // Carta derecha de fondo
+  drawCard(ctx, s*0.56, s*0.22, s*0.32, s*0.44, s, 12, '#c0392b', '♥');
+
+  // Carta central
+  const cx = s*0.5 - s*0.2, cy = s*0.24, cw = s*0.4, ch = s*0.52;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = s * 0.04;
+  ctx.fillStyle = '#fdfaf4';
+  roundRect(ctx, cx, cy, cw, ch, s*0.03);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle = '#c9a84c';
+  ctx.lineWidth = s * 0.005;
+  roundRect(ctx, cx, cy, cw, ch, s*0.03);
+  ctx.stroke();
+
+  // C grande
+  ctx.fillStyle = '#1a3a2a';
+  ctx.font = `bold ${s*0.28}px Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('C', s*0.5, s*0.52);
+
+  // Palo esquina sup izq
+  ctx.font = `${s*0.07}px Georgia, serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#1a3a2a';
+  ctx.fillText('A', cx + s*0.025, cy + s*0.025);
+  ctx.fillText('♣', cx + s*0.027, cy + s*0.085);
+
+  // Texto CONTINENTAL abajo
+  ctx.fillStyle = 'rgba(201,168,76,0.15)';
+  roundRect(ctx, s*0.1, s*0.8, s*0.8, s*0.12, s*0.015);
+  ctx.fill();
+
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = `bold ${s*0.055}px Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('CONTINENTAL', s*0.5, s*0.865);
+
+  // Líneas decorativas
+  ctx.strokeStyle = 'rgba(201,168,76,0.4)';
+  ctx.lineWidth = s*0.002;
+  ctx.beginPath(); ctx.moveTo(s*0.12, s*0.79); ctx.lineTo(s*0.88, s*0.79); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(s*0.12, s*0.935); ctx.lineTo(s*0.88, s*0.935); ctx.stroke();
+
+  // Palos en esquinas
+  const suits = ['♠','♥','♦','♣'];
+  const positions = [[s*0.1,s*0.12],[s*0.86,s*0.12],[s*0.1,s*0.76],[s*0.86,s*0.76]];
+  const colors = ['#c9a84c','#c9a84c','#c9a84c','#c9a84c'];
+  ctx.font = `${s*0.06}px Georgia, serif`;
+  ctx.textBaseline = 'middle';
+  positions.forEach((pos, i) => {
+    ctx.fillStyle = colors[i];
+    ctx.globalAlpha = 0.5;
+    ctx.textAlign = i % 2 === 0 ? 'left' : 'right';
+    ctx.fillText(suits[i], pos[0], pos[1]);
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawCard(ctx, x, y, w, h, s, angle, color, suit) {
+  ctx.save();
+  ctx.translate(x + w/2, y + h/2);
+  ctx.rotate(angle * Math.PI / 180);
+  ctx.fillStyle = '#fdfaf4';
+  roundRect(ctx, -w/2, -h/2, w, h, s*0.025);
+  ctx.fill();
+  ctx.strokeStyle = '#c9a84c';
+  ctx.lineWidth = s*0.003;
+  roundRect(ctx, -w/2, -h/2, w, h, s*0.025);
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.font = `${w*0.4}px Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(suit, 0, 0);
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function downloadCanvas(canvas, filename) {
+  const a = document.createElement('a');
+  a.download = filename;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+function downloadAll() {
+  setTimeout(() => downloadCanvas(document.getElementById('c512'), 'icon-512.png'), 0);
+  setTimeout(() => downloadCanvas(document.getElementById('c192'), 'icon-192.png'), 300);
+  setTimeout(() => downloadCanvas(document.getElementById('c180'), 'icon-180.png'), 600);
+  setTimeout(() => downloadCanvas(document.getElementById('c32'),  'icon-32.png'),  900);
+}
+
+// Dibuja todos los iconos
+['c512','c192','c180','c32'].forEach(id => drawIcon(document.getElementById(id)));
+</script>
+</body>
+</html>
