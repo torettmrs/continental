@@ -108,6 +108,23 @@
   .saved-banner p { color: var(--cream); font-size: 1rem; font-style: italic; }
   .saved-banner .btn { width: auto; }
   .hint { font-size: 0.8rem; color: #8a7060; font-style: italic; text-align: center; margin-bottom: 0.5rem; }
+  .winner-selector { margin-bottom: 1.2rem; }
+  .winner-selector-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #5a4020; margin-bottom: 0.5rem; display: block; }
+  .winner-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .winner-btn { padding: 0.4rem 1rem; border-radius: 20px; border: 2px solid #d4b896; background: #fffdf8; font-family: 'Crimson Pro', serif; font-size: 1rem; color: #5a4020; cursor: pointer; transition: all 0.2s; }
+  .winner-btn:hover { border-color: var(--gold); background: #fff8e8; }
+  .winner-btn.selected { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); border-color: var(--gold-dark); color: var(--text-dark); font-weight: 700; box-shadow: 0 3px 10px rgba(154,122,46,0.4); }
+  .winner-badge { display: inline-block; background: linear-gradient(135deg,#fff8e1,#fdeaa7); border: 1px solid var(--gold); border-radius: 8px; padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.95rem; color: #5a4020; text-align: center; width: 100%; }
+  .winner-badge strong { color: var(--red); }
+  .btn-undo { background: linear-gradient(135deg,#e8d9c0,#c8a87a); color: var(--text-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-size: 0.9rem; padding: 0.5rem 1rem; }
+  .btn-undo:hover { transform: translateY(-2px); }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin: 1.2rem 0; }
+  .stat-card { background: linear-gradient(135deg,#fffdf4,#f5ead8); border: 1px solid #d4b896; border-radius: 10px; padding: 1rem; text-align: center; box-shadow: var(--shadow-sm); animation: slideIn 0.4s ease both; }
+  .stat-icon { font-size: 1.6rem; margin-bottom: 0.3rem; }
+  .stat-value { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 900; color: var(--red); line-height: 1; }
+  .stat-label { font-size: 0.8rem; color: #8a7060; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem; }
+  .stat-name { font-size: 0.95rem; font-weight: 600; color: #5a4020; margin-top: 0.2rem; }
+  .round-winner-chip { display: inline-block; background: linear-gradient(135deg,#fff8e1,#fdeaa7); border: 1px solid var(--gold); border-radius: 12px; padding: 0.1rem 0.5rem; font-size: 0.78rem; color: #7a5010; font-weight: 700; margin-left: 0.3rem; vertical-align: middle; }
   @media (max-width: 768px) {
     .header { padding: 1.2rem 0.75rem 0.5rem; }
     .header::before { letter-spacing: 0.7rem; font-size: 0.9rem; }
@@ -170,10 +187,15 @@
         </div>
       </div>
       <div class="divider" style="margin: 1rem auto;"></div>
-      <div class="panel-title" style="font-size:1.3rem; margin-bottom:1rem;">Puntos de esta ronda</div>
+      <div class="winner-selector">
+        <span class="winner-selector-label">🏆 Ganador de esta ronda</span>
+        <div class="winner-btns" id="winner-btns"></div>
+      </div>
+      <div id="winner-badge" class="winner-badge" style="display:none;"></div>
+      <div class="panel-title" style="font-size:1.3rem; margin-bottom:1rem;">Puntos del resto de jugadores</div>
       <div class="score-inputs" id="score-inputs"></div>
       <div class="action-buttons">
-        <button class="btn btn-danger btn-sm" onclick="confirmGiveWinner()">🏆 Dar Ganador</button>
+        <button class="btn btn-undo btn-sm" onclick="undoLastRound()" id="undo-btn">↩ Deshacer ronda</button>
         <button class="btn btn-primary" onclick="doNextRound()" id="next-round-btn">Siguiente Ronda →</button>
       </div>
     </div>
@@ -184,6 +206,13 @@
       <div class="panel-title">Clasificación Final</div>
       <ul class="ranking-list" id="ranking-list"></ul>
       <div class="divider" style="margin: 1.5rem auto;"></div>
+      <div class="history-toggle">
+        <button class="btn-link" onclick="toggleStats()">Ver estadísticas ▾</button>
+      </div>
+      <div id="stats-wrap" style="display:none;">
+        <div class="stats-grid" id="stats-grid"></div>
+      </div>
+      <div class="divider" style="margin: 1rem auto;"></div>
       <div class="history-toggle">
         <button class="btn-link" onclick="toggleFinalHistory()">Ver historial completo ▾</button>
       </div>
@@ -229,10 +258,11 @@ const ROUNDS = [
 const COLORS = ['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400'];
 
 let numPlayers = 0, players = [], scores = [], currentRound = 0;
+let roundWinners = []; // índice del ganador por ronda
 let evoChart = null, finalChart = null;
 
 function saveGame() {
-  try { localStorage.setItem('continental_save', JSON.stringify({ players, scores, currentRound, numPlayers })); } catch(e){}
+  try { localStorage.setItem('continental_save', JSON.stringify({ players, scores, currentRound, numPlayers, roundWinners })); } catch(e){}
 }
 function clearSave() { try { localStorage.removeItem('continental_save'); } catch(e){} }
 function checkSavedGame() {
@@ -242,6 +272,7 @@ function loadSavedGame() {
   try {
     const s = JSON.parse(localStorage.getItem('continental_save'));
     players = s.players; scores = s.scores; currentRound = s.currentRound; numPlayers = s.numPlayers;
+    roundWinners = s.roundWinners || [];
     showRound(); showToast('Partida cargada ✓');
   } catch(e){ showToast('Error al cargar la partida'); }
 }
@@ -264,6 +295,7 @@ function selectNumPlayers(n) {
 function startGame() {
   players = Array.from({length: numPlayers}, (_,i) => document.getElementById('player-' + i).value.trim() || 'Jugador ' + (i+1));
   scores = players.map(() => []);
+  roundWinners = [];
   currentRound = 0;
   clearSave();
   showRound();
@@ -279,40 +311,87 @@ function showRound() {
     '<div class="round-objective">' + r.objective + '</div>' +
     '<div style="margin-top:0.6rem; font-size:0.9rem; color:var(--gold-light); opacity:0.85;">El ganador de esta ronda descuenta <strong style="color:var(--gold-light);">-' + discount + ' puntos</strong></div>';
   document.getElementById('next-round-btn').textContent = currentRound === ROUNDS.length-1 ? '🏆 Finalizar Partida' : 'Siguiente Ronda →';
+  renderWinnerButtons();
   renderScoreInputs();
   document.getElementById('history-wrap').style.display = 'none';
   document.getElementById('history-toggle-btn').textContent = 'Ver puntuaciones acumuladas ▾';
   saveGame();
 }
 
+let roundWinner = -1;
+
+function renderWinnerButtons() {
+  roundWinner = -1;
+  document.getElementById('winner-badge').style.display = 'none';
+  const c = document.getElementById('winner-btns');
+  c.innerHTML = players.map((name, i) =>
+    '<button class="winner-btn" onclick="selectWinner(' + i + ')" id="wb-' + i + '">' + name + '</button>'
+  ).join('');
+  // Ocultar deshacer si no hay rondas previas
+  document.getElementById('undo-btn').style.display = currentRound === 0 && scores[0] && scores[0].length === 0 ? 'none' : 'inline-block';
+}
+
+function selectWinner(idx) {
+  roundWinner = idx;
+  document.querySelectorAll('.winner-btn').forEach((b, i) => b.classList.toggle('selected', i === idx));
+  const discount = (currentRound + 1) * 10;
+  const badge = document.getElementById('winner-badge');
+  badge.style.display = 'block';
+  badge.innerHTML = '🏆 <strong>' + players[idx] + '</strong> gana la ronda y descuenta <strong>-' + discount + ' pts</strong>';
+  renderScoreInputs();
+}
+
 function renderScoreInputs() {
   const c = document.getElementById('score-inputs');
-  c.innerHTML = players.map((name,i) =>
-    '<div class="score-input-row">' +
-    '<span class="player-name-label">' + name + '</span>' +
-    '<input type="number" id="si-' + i + '" min="0" placeholder="0" />' +
-    '</div>'
-  ).join('');
-  document.getElementById('si-0').focus();
+  c.innerHTML = players.map((name, i) => {
+    if (i === roundWinner) return '';
+    return '<div class="score-input-row">' +
+      '<span class="player-name-label">' + name + '</span>' +
+      '<input type="number" id="si-' + i + '" min="0" placeholder="0" />' +
+      '</div>';
+  }).join('');
+  const first = players.findIndex((_, i) => i !== roundWinner);
+  if (first >= 0 && document.getElementById('si-' + first)) document.getElementById('si-' + first).focus();
 }
 
 function getInputScores() {
-  return players.map((_,i) => { const v = parseInt(document.getElementById('si-' + i).value); return isNaN(v) ? 0 : v; });
+  const discount = (currentRound + 1) * 10;
+  return players.map((_, i) => {
+    if (i === roundWinner) return -discount;
+    const v = parseInt(document.getElementById('si-' + i) ? document.getElementById('si-' + i).value : '0');
+    return isNaN(v) ? 0 : v;
+  });
 }
 
 function doNextRound() {
+  if (roundWinner < 0) { showToast('⚠️ Selecciona el ganador de la ronda'); return; }
   const s = getInputScores();
   s.forEach((v,i) => scores[i].push(v));
+  roundWinners.push(roundWinner);
   saveGame();
   if (currentRound === ROUNDS.length-1) { clearSave(); showFinal(); }
   else { currentRound++; showRound(); playChime(); }
 }
 
-function confirmGiveWinner() {
-  showModal('¿Terminar la partida?', 'Se registrarán los puntos actuales y se mostrará la clasificación final.', 'Sí, terminar', function() {
-    const s = getInputScores();
-    s.forEach((v,i) => scores[i].push(v));
-    clearSave(); showFinal();
+function undoLastRound() {
+  const playedRounds = scores[0] ? scores[0].length : 0;
+  if (playedRounds === 0 && currentRound === 0) { showToast('No hay rondas que deshacer'); return; }
+  showModal('¿Deshacer última ronda?', 'Se eliminarán los puntos de la ronda ' + currentRound + ' y podrás volver a introducirlos.', 'Sí, deshacer', function() {
+    // Si estamos en la ronda actual sin haber guardado nada, retroceder a la anterior
+    if (playedRounds < currentRound || (playedRounds === currentRound && currentRound > 0)) {
+      // nada extra
+    }
+    // Quitar la última ronda de scores
+    if (scores[0] && scores[0].length > 0) {
+      players.forEach((_, i) => scores[i].pop());
+      roundWinners.pop();
+      currentRound = Math.max(0, scores[0].length);
+    } else if (currentRound > 0) {
+      currentRound--;
+    }
+    saveGame();
+    showRound();
+    showToast('Ronda deshecha ✓');
   });
 }
 
@@ -328,13 +407,20 @@ function renderHistoryTable() {
   const totals = getTotals();
   const bestPer = Array.from({length: rounds}, (_,r) => Math.min(...players.map((_,i) => scores[i][r])));
   let h = '<thead><tr><th>Jugador</th>';
-  for (let r=0; r<rounds; r++) h += '<th>R' + (r+1) + '</th>';
+  for (let r=0; r<rounds; r++) {
+    const winnerName = roundWinners[r] !== undefined ? players[roundWinners[r]] : '';
+    h += '<th>R' + (r+1) + (winnerName ? '<br><span style="font-size:0.7rem;color:var(--gold-dark);font-weight:600;">🏆 ' + winnerName + '</span>' : '') + '</th>';
+  }
   h += '<th>Total</th></tr></thead><tbody>';
   players.forEach((name,i) => {
     h += '<tr><td><strong>' + name + '</strong></td>';
     for (let r=0; r<rounds; r++) {
+      const isWinner = roundWinners[r] === i;
       const best = scores[i][r] === bestPer[r];
-      h += '<td class="editable-cell' + (best?' best-round winner-cell':'') + '" onclick="startEdit(this,' + i + ',' + r + ')">' + scores[i][r] + (best?' ★':'') + '</td>';
+      let cls = 'editable-cell';
+      if (isWinner) cls += ' best-round winner-cell';
+      const chip = isWinner ? ' 🏆' : (best ? ' ★' : '');
+      h += '<td class="' + cls + '" onclick="startEdit(this,' + i + ',' + r + ')">' + scores[i][r] + chip + '</td>';
     }
     const win = totals[i] === Math.min(...totals);
     h += '<td class="' + (win?'winner-cell':'') + '"><strong>' + totals[i] + '</strong></td></tr>';
@@ -408,24 +494,76 @@ function showFinal() {
     '<span class="rank-score">' + p.total + ' <span>pts</span></span>' +
     '</li>'
   ).join('');
+
+  // Estadísticas
   const rounds = scores[0] ? scores[0].length : 0;
+  const winsPerPlayer = players.map((_,i) => roundWinners.filter(w => w === i).length);
+  const maxWins = Math.max(...winsPerPlayer);
+  const mostWinsIdx = winsPerPlayer.indexOf(maxWins);
+  // Mayor puntuación en una ronda (peor ronda = más puntos, excluyendo negativos del ganador)
+  let worstRound = { player: '', pts: 0 };
+  players.forEach((name, i) => {
+    scores[i].forEach(s => {
+      if (s > worstRound.pts) worstRound = { player: name, pts: s };
+    });
+  });
+  // Mejor ronda (menor puntuación positiva entre no-ganadores)
+  let bestRoundPts = Infinity, bestRoundPlayer = '';
+  players.forEach((name, i) => {
+    scores[i].forEach((s, r) => {
+      if (roundWinners[r] !== i && s < bestRoundPts) { bestRoundPts = s; bestRoundPlayer = name; }
+    });
+  });
+  // Diferencia final (entre 1º y último)
+  const minTotal = Math.min(...totals), maxTotal = Math.max(...totals);
+  const gap = maxTotal - minTotal;
+
+  const statsGrid = document.getElementById('stats-grid');
+  statsGrid.innerHTML = [
+    { icon: '🏆', value: maxWins, label: 'Rondas ganadas', name: players[mostWinsIdx] },
+    { icon: '📉', value: sorted[0].total + ' pts', label: 'Mejor total', name: sorted[0].name },
+    { icon: '😬', value: worstRound.pts + ' pts', label: 'Peor ronda', name: worstRound.player },
+    { icon: '✨', value: bestRoundPts === Infinity ? '-' : bestRoundPts + ' pts', label: 'Mejor ronda sin ganar', name: bestRoundPlayer || '-' },
+    { icon: '📊', value: gap + ' pts', label: 'Diferencia 1º–último', name: '' },
+    { icon: '🃏', value: rounds, label: 'Rondas jugadas', name: '' },
+  ].map((s, idx) =>
+    '<div class="stat-card" style="animation-delay:' + (idx*0.08) + 's">' +
+    '<div class="stat-icon">' + s.icon + '</div>' +
+    '<div class="stat-value">' + s.value + '</div>' +
+    '<div class="stat-label">' + s.label + '</div>' +
+    (s.name ? '<div class="stat-name">' + s.name + '</div>' : '') +
+    '</div>'
+  ).join('');
+
+  // Tabla historial final
   const bestPer = Array.from({length: rounds}, (_,r) => Math.min(...players.map((_,i) => scores[i][r])));
   const ttotals = getTotals();
   let h = '<thead><tr><th>Jugador</th>';
-  for (let r=0; r<rounds; r++) h += '<th>R' + (r+1) + '</th>';
+  for (let r=0; r<rounds; r++) {
+    const wName = roundWinners[r] !== undefined ? players[roundWinners[r]] : '';
+    h += '<th>R' + (r+1) + (wName ? '<br><span style="font-size:0.7rem;color:var(--gold-dark);font-weight:600;">🏆 ' + wName + '</span>' : '') + '</th>';
+  }
   h += '<th>Total</th></tr></thead><tbody>';
   players.forEach((name,i) => {
     h += '<tr><td><strong>' + name + '</strong></td>';
     for (let r=0; r<rounds; r++) {
+      const isWinner = roundWinners[r] === i;
       const best = scores[i][r] === bestPer[r];
-      h += '<td class="' + (best?'best-round winner-cell':'') + '">' + scores[i][r] + (best?' ★':'') + '</td>';
+      let cls = isWinner ? 'best-round winner-cell' : (best ? 'best-round winner-cell' : '');
+      h += '<td class="' + cls + '">' + scores[i][r] + (isWinner ? ' 🏆' : (best ? ' ★' : '')) + '</td>';
     }
     const win = ttotals[i] === Math.min(...ttotals);
     h += '<td class="' + (win?'winner-cell':'') + '"><strong>' + ttotals[i] + '</strong></td></tr>';
   });
   document.getElementById('final-history-table').innerHTML = h + '</tbody>';
   document.getElementById('final-history-wrap').style.display = 'none';
+  document.getElementById('stats-wrap').style.display = 'none';
   setTimeout(function() { buildChart('final-chart', true); }, 200);
+}
+
+function toggleStats() {
+  const wrap = document.getElementById('stats-wrap');
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
 }
 
 function toggleHistory() {
@@ -483,7 +621,7 @@ function showScreen(id) {
 function newGame() {
   showModal('¿Nueva partida?', 'Se perderá el progreso actual y la partida guardada.', 'Sí, nueva partida', function() {
     clearSave();
-    numPlayers=0; players=[]; scores=[]; currentRound=0;
+    numPlayers=0; players=[]; scores=[]; currentRound=0; roundWinners=[];
     if (evoChart) { evoChart.destroy(); evoChart=null; }
     if (finalChart) { finalChart.destroy(); finalChart=null; }
     document.querySelectorAll('.num-btn').forEach(function(b) { b.classList.remove('selected'); });
