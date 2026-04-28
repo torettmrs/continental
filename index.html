@@ -125,6 +125,9 @@
   .stat-label { font-size: 0.8rem; color: #8a7060; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem; }
   .stat-name { font-size: 0.95rem; font-weight: 600; color: #5a4020; margin-top: 0.2rem; }
   .round-winner-chip { display: inline-block; background: linear-gradient(135deg,#fff8e1,#fdeaa7); border: 1px solid var(--gold); border-radius: 12px; padding: 0.1rem 0.5rem; font-size: 0.78rem; color: #7a5010; font-weight: 700; margin-left: 0.3rem; vertical-align: middle; }
+  .btn-remove-player { background: none; border: none; color: #c0392b; font-size: 1.1rem; cursor: pointer; padding: 0 0.3rem; opacity: 0.5; transition: opacity 0.2s; flex-shrink: 0; line-height: 1; }
+  .btn-remove-player:hover { opacity: 1; }
+  .player-retired { opacity: 0.45; text-decoration: line-through; font-style: italic; }
   @media (max-width: 768px) {
     .header { padding: 1.2rem 0.75rem 0.5rem; }
     .header::before { letter-spacing: 0.7rem; font-size: 0.9rem; }
@@ -195,8 +198,9 @@
       <div class="panel-title" style="font-size:1.3rem; margin-bottom:1rem;">Puntos del resto de jugadores</div>
       <div class="score-inputs" id="score-inputs"></div>
       <div class="action-buttons">
-        <button class="btn btn-undo btn-sm" onclick="undoLastRound()" id="undo-btn">↩ Deshacer ronda</button>
-        <button class="btn btn-primary" onclick="doNextRound()" id="next-round-btn">Siguiente Ronda →</button>
+        <button class="btn btn-undo btn-sm" onclick="undoLastRound()" id="undo-btn">↩ Deshacer</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmEndGame()">⛳ Finalizar ya</button>
+        <button class="btn btn-primary" onclick="doNextRound()" id="next-round-btn">Siguiente →</button>
       </div>
     </div>
   </div>
@@ -258,11 +262,12 @@ const ROUNDS = [
 const COLORS = ['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400'];
 
 let numPlayers = 0, players = [], scores = [], currentRound = 0;
-let roundWinners = []; // índice del ganador por ronda
+let roundWinners = [];
+let retiredPlayers = []; // índices de jugadores que abandonaron
 let evoChart = null, finalChart = null;
 
 function saveGame() {
-  try { localStorage.setItem('continental_save', JSON.stringify({ players, scores, currentRound, numPlayers, roundWinners })); } catch(e){}
+  try { localStorage.setItem('continental_save', JSON.stringify({ players, scores, currentRound, numPlayers, roundWinners, retiredPlayers })); } catch(e){}
 }
 function clearSave() { try { localStorage.removeItem('continental_save'); } catch(e){} }
 function checkSavedGame() {
@@ -273,6 +278,7 @@ function loadSavedGame() {
     const s = JSON.parse(localStorage.getItem('continental_save'));
     players = s.players; scores = s.scores; currentRound = s.currentRound; numPlayers = s.numPlayers;
     roundWinners = s.roundWinners || [];
+    retiredPlayers = s.retiredPlayers || [];
     showRound(); showToast('Partida cargada ✓');
   } catch(e){ showToast('Error al cargar la partida'); }
 }
@@ -296,6 +302,7 @@ function startGame() {
   players = Array.from({length: numPlayers}, (_,i) => document.getElementById('player-' + i).value.trim() || 'Jugador ' + (i+1));
   scores = players.map(() => []);
   roundWinners = [];
+  retiredPlayers = [];
   currentRound = 0;
   clearSave();
   showRound();
@@ -324,16 +331,18 @@ function renderWinnerButtons() {
   roundWinner = -1;
   document.getElementById('winner-badge').style.display = 'none';
   const c = document.getElementById('winner-btns');
-  c.innerHTML = players.map((name, i) =>
-    '<button class="winner-btn" onclick="selectWinner(' + i + ')" id="wb-' + i + '">' + name + '</button>'
-  ).join('');
-  // Ocultar deshacer si no hay rondas previas
+  c.innerHTML = players.map((name, i) => {
+    if (retiredPlayers.includes(i)) return '';
+    return '<button class="winner-btn" onclick="selectWinner(' + i + ')" id="wb-' + i + '">' + name + '</button>';
+  }).join('');
   document.getElementById('undo-btn').style.display = currentRound === 0 && scores[0] && scores[0].length === 0 ? 'none' : 'inline-block';
 }
 
 function selectWinner(idx) {
   roundWinner = idx;
-  document.querySelectorAll('.winner-btn').forEach((b, i) => b.classList.toggle('selected', i === idx));
+  document.querySelectorAll('.winner-btn').forEach(b => b.classList.remove('selected'));
+  const wb = document.getElementById('wb-' + idx);
+  if (wb) wb.classList.add('selected');
   const discount = (currentRound + 1) * 10;
   const badge = document.getElementById('winner-badge');
   badge.style.display = 'block';
@@ -345,12 +354,16 @@ function renderScoreInputs() {
   const c = document.getElementById('score-inputs');
   c.innerHTML = players.map((name, i) => {
     if (i === roundWinner) return '';
+    const retired = retiredPlayers.includes(i);
     return '<div class="score-input-row">' +
-      '<span class="player-name-label">' + name + '</span>' +
-      '<input type="number" id="si-' + i + '" min="0" placeholder="0" />' +
+      '<span class="player-name-label' + (retired ? ' player-retired' : '') + '">' + name + (retired ? ' (retirado)' : '') + '</span>' +
+      (!retired
+        ? '<input type="number" id="si-' + i + '" min="0" placeholder="0" />'
+        : '<span style="width:100px;text-align:center;font-size:0.9rem;color:#aaa;">—</span>') +
+      (!retired ? '<button class="btn-remove-player" onclick="removePlayer(' + i + ')" title="Retirar jugador">✕</button>' : '') +
       '</div>';
   }).join('');
-  const first = players.findIndex((_, i) => i !== roundWinner);
+  const first = players.findIndex((_, i) => i !== roundWinner && !retiredPlayers.includes(i));
   if (first >= 0 && document.getElementById('si-' + first)) document.getElementById('si-' + first).focus();
 }
 
@@ -358,8 +371,35 @@ function getInputScores() {
   const discount = (currentRound + 1) * 10;
   return players.map((_, i) => {
     if (i === roundWinner) return -discount;
+    if (retiredPlayers.includes(i)) return 0;
     const v = parseInt(document.getElementById('si-' + i) ? document.getElementById('si-' + i).value : '0');
     return isNaN(v) ? 0 : v;
+  });
+}
+
+function removePlayer(idx) {
+  showModal(
+    '¿Retirar a ' + players[idx] + '?',
+    'A partir de esta ronda no acumulará más puntos. Sus puntos anteriores se mantienen.',
+    'Sí, retirar',
+    function() {
+      retiredPlayers.push(idx);
+      if (roundWinner === idx) { roundWinner = -1; document.getElementById('winner-badge').style.display = 'none'; }
+      renderWinnerButtons();
+      renderScoreInputs();
+      showToast(players[idx] + ' retirado de la partida');
+      saveGame();
+    }
+  );
+}
+
+function confirmEndGame() {
+  if (roundWinner < 0) { showToast('⚠️ Selecciona el ganador de la ronda'); return; }
+  showModal('¿Finalizar la partida?', 'Se registrarán los puntos de esta ronda y se mostrará la clasificación final.', 'Sí, finalizar', function() {
+    const s = getInputScores();
+    s.forEach((v,i) => scores[i].push(v));
+    roundWinners.push(roundWinner);
+    clearSave(); showFinal();
   });
 }
 
@@ -621,7 +661,7 @@ function showScreen(id) {
 function newGame() {
   showModal('¿Nueva partida?', 'Se perderá el progreso actual y la partida guardada.', 'Sí, nueva partida', function() {
     clearSave();
-    numPlayers=0; players=[]; scores=[]; currentRound=0; roundWinners=[];
+    numPlayers=0; players=[]; scores=[]; currentRound=0; roundWinners=[]; retiredPlayers=[];
     if (evoChart) { evoChart.destroy(); evoChart=null; }
     if (finalChart) { finalChart.destroy(); finalChart=null; }
     document.querySelectorAll('.num-btn').forEach(function(b) { b.classList.remove('selected'); });
